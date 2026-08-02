@@ -1,0 +1,26 @@
+# LF v repu i v pracovni kopii - deterministicky nezavisle na tom,
+# kdo a cim export delal. Bez tohoto delal kazdy export "zmenu" na kazdem radku.
+# (Chces-li v pracovni kopii CRLF, zmen na: * text=auto)
+* text=auto eol=lf
+
+# Textove formaty z rozbalene solution
+*.xml   text
+*.json  text
+*.yaml  text
+*.yml   text
+*.fx.yaml text
+*.sarif text
+*.md    text
+
+# Binarky - git je nema diffovat
+*.msapp binary
+*.zip   binary
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.ico   binary
+*.pfx   binary
+
+# Rozbaleny canvas zdroj se v PR chova jako generovany kod
+src/*/CanvasApps/src/** linguist-generated=false

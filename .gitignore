@@ -1,0 +1,19 @@
+# exportovane balicky - do repa patri jen rozbaleny zdroj
+/drop/*
+!/drop/.gitkeep
+*.zip
+
+# .msapp je binarka; verzuje se jeho rozbaleny obsah v CanvasApps/src
+*.msapp
+
+# regenerovatelny sum z rozbaleni canvas appu
+Entropy.json
+AppCheckerResult.sarif
+
+# pac / lokalni smeti
+.pac/
+*.log
+Thumbs.db
+desktop.ini
+.vs/
+.vscode/
