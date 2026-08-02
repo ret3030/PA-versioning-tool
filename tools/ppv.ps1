@@ -257,12 +257,12 @@ function Invoke-PpvInteractiveSync {
 
     if ($zips.Count -eq 0) { Wait-PpvKey; return $Config }
 
-    $autoCommit = Read-PpvConfirm -Prompt 'Po rozbaleni rovnou commitnout?' -Default $true
+    $autoCommit = Read-PpvConfirm -Prompt 'Po rozbaleni rovnou commitnout?' -Default ([bool]$Config.git.autoCommit)
     $doTag  = $false
     $doPush = $false
     if ($autoCommit) {
-        $doTag  = Read-PpvConfirm -Prompt 'Vytvorit i git tag?' -Default $false
-        $doPush = Read-PpvConfirm -Prompt 'Po commitu pushnout?' -Default $false
+        $doTag  = Read-PpvConfirm -Prompt 'Vytvorit i git tag?' -Default ([bool]$Config.git.tag)
+        $doPush = Read-PpvConfirm -Prompt 'Po commitu pushnout?' -Default ([bool]$Config.git.push)
     }
 
     $failed = Invoke-PpvSyncBatch -Pac $Pac -Config $Config -Environment $environment -ZipPaths $zips `
@@ -423,8 +423,14 @@ function Invoke-PpvCliSync {
         if ($zips.Count -eq 0) { throw "Ve slozce '$($Config.dropFolder)' nejsou zadne zipy." }
     }
 
+    # -NoCommit/-Tag/-Push explicitne prepisuji config, jinak se pouzije
+    # ulozene nastaveni z ppv.config.json (git.autoCommit/tag/push).
+    $autoCommit = if ($NoCommit.IsPresent) { $false } else { [bool]$Config.git.autoCommit }
+    $createTag  = if ($PSBoundParameters.ContainsKey('Tag'))  { $Tag.IsPresent }  else { [bool]$Config.git.tag }
+    $doPush     = if ($PSBoundParameters.ContainsKey('Push')) { $Push.IsPresent } else { [bool]$Config.git.push }
+
     $failed = Invoke-PpvSyncBatch -Pac $pac -Config $Config -Environment $env -ZipPaths $zips `
-                                  -AutoCommit (-not $NoCommit) -CreateTag $Tag.IsPresent -DoPush $Push.IsPresent `
+                                  -AutoCommit $autoCommit -CreateTag $createTag -DoPush $doPush `
                                   -MessageOverride $Message
 
     Write-Host ''
