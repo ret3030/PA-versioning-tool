@@ -171,6 +171,17 @@ function Test-GitRepo {
     } finally { Pop-Location }
 }
 
+function Test-PpvIsGithubUrl {
+    <#
+        github.com je defaultne zamceny jako cil remote - je to verejna,
+        firmou nespravovana sluzba a exporty solution mohou obsahovat
+        citliva data (connection references, env promenne). Pokryje
+        https i ssh tvar URL (git@github.com:...).
+    #>
+    param([Parameter(Mandatory)][string]$Url)
+    return [bool]($Url -match '(?i)(^|[/@.])github\.com([:/]|$)')
+}
+
 function Get-PpvGitRemotes {
     <#
         Vraci pole @{ Name; Url } - bez remote (defaultni, ciste lokalni

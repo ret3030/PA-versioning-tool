@@ -36,10 +36,11 @@ function New-PpvConfig {
         }
         canvas             = [pscustomobject]@{ mode = 'Auto' }
         git                = [pscustomobject]@{
-            autoCommit      = $true
-            tag             = $false
-            push            = $false
-            messageTemplate = '[{env}] {solution} {version} ({type})'
+            autoCommit        = $true
+            tag               = $false
+            push              = $false
+            messageTemplate   = '[{env}] {solution} {version} ({type})'
+            allowGithubRemote = $false   # github.com je defaultne zamceny - viz Test-PpvIsGithubUrl
         }
     }
 }
@@ -89,6 +90,16 @@ function Convert-PpvConfig {
     foreach ($prop in $defaults.PSObject.Properties) {
         if (-not ($Config.PSObject.Properties.Name -contains $prop.Name)) {
             $Config | Add-Member -NotePropertyName $prop.Name -NotePropertyValue $prop.Value -Force
+        }
+    }
+
+    # doplni i nove pridane klice uvnitr uz existujicich vnorenych objektu
+    # (napr. git.allowGithubRemote pridane pozdeji do schematu v2)
+    foreach ($nested in @('git', 'normalize', 'canvas')) {
+        foreach ($sub in $defaults.$nested.PSObject.Properties) {
+            if (-not ($Config.$nested.PSObject.Properties.Name -contains $sub.Name)) {
+                $Config.$nested | Add-Member -NotePropertyName $sub.Name -NotePropertyValue $sub.Value -Force
+            }
         }
     }
 

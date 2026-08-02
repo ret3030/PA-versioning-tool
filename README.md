@@ -43,7 +43,7 @@ Při prvním spuštění tě provede **setup průvodce**: založí git repo (pok
 - **Správa prostředí** — přidat/upravit/odebrat prostředí, přepnout aktivní, ověřit nebo obnovit `pac auth` přihlášení.
 - **Stav repozitáře** — branch, necommitnuté změny, posledních 8 commitů.
 - **Porovnat commity** — vybereš dva commity z historie (starší → novější, nebo HEAD) a zobrazí se souhrn změn, volitelně i plný diff (do konzole nebo uložit jako `.patch`).
-- **Vzdálené úložiště (remote)** — repo defaultně nemá žádný remote (čistě lokální režim, viz Zscaler sekce níže). Tady si ho případně přidáš/upravíš/odebereš, až/pokud budeš mít kam pushovat.
+- **Vzdálené úložiště (remote)** — repo defaultně nemá žádný remote (čistě lokální režim, viz Zscaler sekce níže). Tady si ho případně přidáš/upravíš/odebereš, až/pokud budeš mít kam pushovat. **GitHub (github.com) je defaultně zamčený** — přidání/změna remote na github.com URL se zeptá na výslovné odemčení (uloží se do configu, dá se zase zamknout v Nastavení).
 - **Nastavení** — auto-commit/tag/push, formátování JSON, režim rozbalení canvas appů.
 
 Ovládání: šipky nahoru/dolů, `Enter` potvrdit, `Esc` zpět, u víceného výběru navíc mezerník (přepnout) a `a` (vše/nic). Když terminál neumí číst klávesy (např. spouštíš přes nějaký wrapper), CLI samo přepne na číslovaný seznam a zadání čísla přes `Enter`.
@@ -89,8 +89,18 @@ ppv.cmd remote remove
 | `remote` (bez `SubCommand`) nebo `remote list` | vypíše nastavené remotes |
 | `remote add -Url <adresa>` | přidá remote (výchozí jméno `origin`, lze přepsat `-RemoteName`) |
 | `remote remove` | odebere remote (výchozí jméno `origin`, lze přepsat `-RemoteName`) |
+| `remote add -Url <github-adresa> -AllowGithub` | přidá GitHub remote a zároveň ho natrvalo odemkne v configu (viz níže) |
 
 Bez remote (výchozí stav) `git push`/`-Push`/`Auto-push` prostě nemají kam pushovat — repo funguje čistě lokálně.
+
+### GitHub je defaultně zamčený
+
+`github.com` je veřejná, firmou nespravovaná služba a exporty solution mohou obsahovat citlivá data (connection references, environment proměnné) — proto je jako cíl remote **defaultně zamčený** (`ppv.config.json` → `git.allowGithubRemote: false`).
+
+- **V menu:** přidání/změna remote na github.com URL se rovnou zeptá, jestli ho chceš odemknout — při souhlasu se uloží do configu natrvalo (nemusíš pak odpovídat znovu). Zamknout zpátky jde v **Nastavení → Přepnout povolení GitHub remote**.
+- **V CLI:** `ppv.cmd remote add -Url <github-adresa>` bez odemčení skončí chybou; přidej `-AllowGithub`, ať se povolení nastaví zároveň s přidáním remote.
+
+Jiné hostitele (interní Azure DevOps, GitLab, on-prem GitHub Enterprise pod vlastní doménou apod.) tohle omezení neřeší — týká se jen `github.com`.
 
 ## Struktura repa
 

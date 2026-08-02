@@ -46,7 +46,8 @@ param(
     [string]$To,
     [string]$Path,
     [string]$RemoteName = 'origin',
-    [string]$Url
+    [string]$Url,
+    [switch]$AllowGithub
 )
 
 Set-StrictMode -Version Latest
@@ -321,6 +322,7 @@ function Invoke-PpvSettingsMenu {
         Write-PpvField -Label 'Auto-push'         -Value $Config.git.push
         Write-PpvField -Label 'Pretty-print JSON' -Value $Config.normalize.prettyPrintJson
         Write-PpvField -Label 'Scrub timestamps'  -Value $Config.normalize.scrubTimestamps
+        Write-PpvField -Label 'GitHub remote povolen' -Value $Config.git.allowGithubRemote
 
         $items = @(
             [pscustomobject]@{ Key = 'commit'; Label = "Prepnout auto-commit ($($Config.git.autoCommit))" }
@@ -328,6 +330,7 @@ function Invoke-PpvSettingsMenu {
             [pscustomobject]@{ Key = 'push';   Label = "Prepnout auto-push ($($Config.git.push))" }
             [pscustomobject]@{ Key = 'pretty'; Label = "Prepnout pretty-print JSON ($($Config.normalize.prettyPrintJson))" }
             [pscustomobject]@{ Key = 'scrub';  Label = "Prepnout scrub timestamps ($($Config.normalize.scrubTimestamps))" }
+            [pscustomobject]@{ Key = 'github'; Label = "Prepnout povoleni GitHub remote ($($Config.git.allowGithubRemote))"; Hint = 'defaultne zamceno' }
             [pscustomobject]@{ Key = 'canvas'; Label = 'Zmenit canvas rezim' }
             [pscustomobject]@{ Key = 'back';   Label = 'Zpet' }
         )
@@ -340,6 +343,7 @@ function Invoke-PpvSettingsMenu {
             'push'   { $Config.git.push       = -not [bool]$Config.git.push }
             'pretty' { $Config.normalize.prettyPrintJson = -not [bool]$Config.normalize.prettyPrintJson }
             'scrub'  { $Config.normalize.scrubTimestamps = -not [bool]$Config.normalize.scrubTimestamps }
+            'github' { $Config.git.allowGithubRemote = -not [bool]$Config.git.allowGithubRemote }
             'canvas' {
                 $modeItems = @(
                     [pscustomobject]@{ Key = 'Auto';        Label = 'Auto (doporuceno)'; Hint = 'zkusi --processCanvasApps, pak fallback' }
@@ -356,6 +360,33 @@ function Invoke-PpvSettingsMenu {
 }
 
 # ------------------------------------------------------------- git remote --
+
+function Confirm-PpvGithubAllowed {
+    <#
+        github.com je defaultne zamceny jako cil remote (verejna, firmou
+        nespravovana sluzba - exporty solution mohou obsahovat citliva data).
+        Vrati $true, pokud URL neni github.com, nebo uz je odemcen v configu.
+        Jinak se zepta na odemceni; pri souhlasu ulozi do configu a vrati
+        $true, pri odmitnuti vrati $false.
+    #>
+    param(
+        [Parameter(Mandatory)]$Config,
+        [Parameter(Mandatory)][string]$Url
+    )
+    if (-not (Test-PpvIsGithubUrl -Url $Url)) { return $true }
+    if ([bool]$Config.git.allowGithubRemote) { return $true }
+
+    Write-PpvWarn 'GitHub (github.com) je defaultne zamceny jako cil remote.'
+    Write-PpvHint 'Duvod: verejna, firmou nespravovana sluzba - exporty solution mohou obsahovat citliva data (connection references, environment promenne).'
+    if (Read-PpvConfirm -Prompt 'Odemknout GitHub jako povoleny remote a pokracovat?' -Default $false) {
+        $Config.git.allowGithubRemote = $true
+        Save-PpvConfig -RepoRoot $RepoRoot -Config $Config
+        Write-PpvOk 'GitHub remote odemcen (jde zase zamknout v Nastaveni).'
+        return $true
+    }
+    Write-PpvHint 'Zruseno.'
+    return $false
+}
 
 function Invoke-PpvRemoteMenu {
     <#
@@ -390,6 +421,12 @@ function Invoke-PpvRemoteMenu {
             'add' {
                 $name = Read-PpvText -Prompt 'Nazev remote' -Default 'origin' -Required
                 $url  = Read-PpvText -Prompt 'URL repozitare (napr. interni Azure DevOps / GitLab / GitHub Enterprise)' -Required
+
+                if (-not (Confirm-PpvGithubAllowed -Config $Config -Url $url)) {
+                    Wait-PpvKey
+                    continue
+                }
+
                 if (Add-PpvGitRemote -RepoRoot $RepoRoot -Name $name -Url $url) {
                     Write-PpvOk "Remote '$name' pridan."
                     if (-not [bool]$Config.git.push -and (Read-PpvConfirm -Prompt 'Zapnout i auto-push po commitu?' -Default $false)) {
@@ -407,6 +444,10 @@ function Invoke-PpvRemoteMenu {
                 $pick = Show-PpvMenu -Items $names -Title 'Ktery remote upravit?'
                 if ($pick) {
                     $url = Read-PpvText -Prompt 'Nova URL' -Required
+                    if (-not (Confirm-PpvGithubAllowed -Config $Config -Url $url)) {
+                        Wait-PpvKey
+                        continue
+                    }
                     if (Set-PpvGitRemoteUrl -RepoRoot $RepoRoot -Name $pick -Url $url) { Write-PpvOk 'URL zmenena.' }
                     else { Write-PpvErr 'Zmena URL selhala.' }
                 }
@@ -544,11 +585,23 @@ function Invoke-PpvCliDiff {
 }
 
 function Invoke-PpvCliRemote {
+    param([Parameter(Mandatory)]$Config)
+
     Assert-PpvGitRepo -RepoRoot $RepoRoot
 
     switch ($SubCommand) {
         'add' {
             if (-not $Url) { throw 'Chybi -Url <adresa repozitare>.' }
+
+            if ((Test-PpvIsGithubUrl -Url $Url) -and -not [bool]$Config.git.allowGithubRemote) {
+                if (-not $AllowGithub.IsPresent) {
+                    throw "GitHub (github.com) je defaultne zamceny jako cil remote (verejna, firmou nespravovana sluzba - exporty solution mohou obsahovat citliva data). Povol ho bud v menu Nastaveni, nebo pridej prepinac -AllowGithub."
+                }
+                $Config.git.allowGithubRemote = $true
+                Save-PpvConfig -RepoRoot $RepoRoot -Config $Config
+                Write-PpvOk 'GitHub remote odemcen (-AllowGithub).'
+            }
+
             if (-not (Add-PpvGitRemote -RepoRoot $RepoRoot -Name $RemoteName -Url $Url)) {
                 throw "Nepodarilo se pridat remote '$RemoteName' - mozna uz existuje."
             }
@@ -607,6 +660,6 @@ switch ($Command) {
     'sync'   { Invoke-PpvCliSync -Config $existingConfig }
     'env'    { Invoke-PpvCliEnv -Config $existingConfig }
     'diff'   { Invoke-PpvCliDiff }
-    'remote' { Invoke-PpvCliRemote }
+    'remote' { Invoke-PpvCliRemote -Config $existingConfig }
     'status' { Show-PpvStatus -Config $existingConfig }
 }
