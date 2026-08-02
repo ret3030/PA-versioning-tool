@@ -135,6 +135,8 @@ cd C:\Users\<jmeno>\PowerApps-Solutions
 
 `ppv.config.json`, `src\` a `drop\` v cílové složce se nikdy nepřepisují — `install.ps1` je proto bezpečné spouštět opakovaně i jen pro aktualizaci nástroje (po `git pull` v klonu `PA-versioning-tool` znovu spusť `install.ps1` se stejným `-Target`).
 
+`install.ps1` po zkopírování rovnou commitne skeleton nástroje (`tools\`, `ppv.cmd`, `.gitignore`, `.gitattributes`) samostatným commitem — jinak by tyhle soubory zůstávaly navždy necommitnuté, protože `ppv` při synchronizaci commituje výhradně `src\<prostredi>\<Solution>`. Ze stejného důvodu se do commitu solution přibalí i `ppv.config.json`, pokud se zrovna změnil (např. nově objevené unique names uložené při interaktivním exportu) — takže `git status`/**Stav repozitáře** by po běžném použití neměly hlásit žádné trvale visící necommitnuté soubory.
+
 ## Prostředí a přihlášení
 
 Každé prostředí má vlastní pojmenovaný `pac auth` profil (`ppv-<nazev>`), takže přepínání mezi dev/test/prod nepřepisuje přihlášení ostatních — CLI před každou operací sám vybere správný profil (`pac auth select`). Profily se dají kdykoliv spravovat v menu **Správa prostředí → Ověřit / obnovit přihlášení**.

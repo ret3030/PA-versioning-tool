@@ -148,7 +148,14 @@ function Invoke-PpvSolutionSync {
             $tagName = if ($CreateTag) { "$EnvironmentName/$($info.UniqueName)/v$($info.Version)" } else { $null }
             $result.TagName = $tagName
 
-            $commitResult = Invoke-GitCommit -RepoRoot $RepoRoot -RelativePath $relativePath `
+            # ppv.config.json se meni bokem (napr. nove objevene unique names
+            # ulozene pri interaktivnim exportu) - vezme se do stejneho commitu,
+            # aby nezustaval trvale necommitnuty mimo dohled sync flow.
+            $commitPaths = @($relativePath)
+            $configPath = Get-PpvConfigPath -RepoRoot $RepoRoot
+            if (Test-Path -LiteralPath $configPath) { $commitPaths += 'ppv.config.json' }
+
+            $commitResult = Invoke-GitCommit -RepoRoot $RepoRoot -RelativePath $commitPaths `
                                              -Message $msg -TagName $tagName -Push:$Push
             $result.CommitResult = $commitResult
             $result.Committed    = ($commitResult -in @('committed', 'pushed', 'push-failed'))

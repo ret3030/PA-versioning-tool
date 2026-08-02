@@ -256,7 +256,7 @@ function Invoke-GitCommit {
     #>
     param(
         [Parameter(Mandatory)][string]$RepoRoot,
-        [Parameter(Mandatory)][string]$RelativePath,
+        [Parameter(Mandatory)][string[]]$RelativePath,
         [Parameter(Mandatory)][string]$Message,
         [string]$TagName,
         [switch]$Push
@@ -264,16 +264,16 @@ function Invoke-GitCommit {
 
     Push-Location $RepoRoot
     try {
-        & git add -A -- $RelativePath
-        if ($LASTEXITCODE -ne 0) { throw "git add selhalo pro '$RelativePath'." }
+        & git add -A -- @RelativePath
+        if ($LASTEXITCODE -ne 0) { throw "git add selhalo pro '$($RelativePath -join ', ')'." }
 
-        & git diff --cached --quiet -- $RelativePath
+        & git diff --cached --quiet -- @RelativePath
         if ($LASTEXITCODE -eq 0) {
-            & git reset --quiet -- $RelativePath 2>&1 | Out-Null
+            & git reset --quiet -- @RelativePath 2>&1 | Out-Null
             return 'no-changes'
         }
 
-        & git commit --only -m $Message -- $RelativePath | Out-Null
+        & git commit --only -m $Message -- @RelativePath | Out-Null
         if ($LASTEXITCODE -ne 0) { throw 'git commit selhal.' }
 
         if ($TagName) {

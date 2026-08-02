@@ -46,11 +46,27 @@ Write-Host "  tools\, ppv.cmd, .gitignore, .gitattributes zkopirovany." -Foregro
 
 Push-Location $Target
 try {
+    $isRepo = $true
     if (-not (Test-Path -LiteralPath '.git')) {
         $answer = (Read-Host "  '$Target' jeste neni git repozitar. Zalozit (git init)? [A/n]").Trim().ToLowerInvariant()
         if ($answer -notin @('n', 'ne', 'no')) {
             & git init | Out-Null
             Write-Host '  git init hotovo (bez remote - zustava lokalne).' -ForegroundColor Green
+        } else {
+            $isRepo = $false
+        }
+    }
+
+    # Commitne jen skeleton nastroje (tools\, ppv.cmd, .gitignore, .gitattributes) -
+    # bez tohohle by tyhle soubory zustavaly trvale necommitnute, protoze ppv
+    # pri synchronizaci solution commituje vyhradne src\<prostredi>\<Solution>.
+    if ($isRepo) {
+        $skeletonPaths = @('tools', 'ppv.cmd', '.gitignore', '.gitattributes')
+        & git add -- @skeletonPaths
+        & git diff --cached --quiet -- @skeletonPaths
+        if ($LASTEXITCODE -ne 0) {
+            & git commit -m 'ppv: instalace/aktualizace nastroje' -- @skeletonPaths | Out-Null
+            Write-Host '  Skeleton nastroje (tools\, ppv.cmd, .gitignore, .gitattributes) commitnut.' -ForegroundColor Green
         }
     }
 } finally { Pop-Location }
