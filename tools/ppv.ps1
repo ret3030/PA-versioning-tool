@@ -12,6 +12,7 @@
         ppv.ps1 sync -Environment dev -Mode Export -Solution MojeSolution
         ppv.ps1 env list
         ppv.ps1 setup
+        ppv.ps1 diff -From v1.2.0 -To HEAD
 
 .EXAMPLE
     .\tools\ppv.ps1
@@ -24,7 +25,7 @@
 [CmdletBinding()]
 param(
     [Parameter(Position = 0)]
-    [ValidateSet('setup', 'sync', 'env', 'status', '')]
+    [ValidateSet('setup', 'sync', 'env', 'status', 'diff', '')]
     [string]$Command = '',
 
     [Parameter(Position = 1)]
@@ -38,7 +39,10 @@ param(
     [switch]$NoCommit,
     [switch]$Tag,
     [switch]$Push,
-    [string]$Message
+    [string]$Message,
+    [string]$From,
+    [string]$To,
+    [string]$Path
 )
 
 Set-StrictMode -Version Latest
@@ -52,7 +56,7 @@ trap {
 
 $RepoRoot = Split-Path -Parent $PSScriptRoot
 $LibRoot  = Join-Path $PSScriptRoot 'lib'
-foreach ($lib in @('PPV.Config.ps1', 'PPV.UI.ps1', 'PPV.Pac.ps1', 'PPV.Common.ps1', 'PPV.Sync.ps1', 'PPV.Setup.ps1')) {
+foreach ($lib in @('PPV.Config.ps1', 'PPV.UI.ps1', 'PPV.Pac.ps1', 'PPV.Common.ps1', 'PPV.Sync.ps1', 'PPV.Setup.ps1', 'PPV.Compare.ps1')) {
     . (Join-Path $LibRoot $lib)
 }
 
@@ -365,6 +369,7 @@ function Invoke-PpvMainMenu {
             [pscustomobject]@{ Key = 'sync';   Label = 'Synchronizovat solution' }
             [pscustomobject]@{ Key = 'env';    Label = 'Sprava prostredi' }
             [pscustomobject]@{ Key = 'status'; Label = 'Stav repozitare' }
+            [pscustomobject]@{ Key = 'diff';   Label = 'Porovnat commity' }
             [pscustomobject]@{ Key = 'settings'; Label = 'Nastaveni' }
             [pscustomobject]@{ Key = 'exit';   Label = 'Konec' }
         )
@@ -375,6 +380,7 @@ function Invoke-PpvMainMenu {
             'sync'     { $Config = Invoke-PpvInteractiveSync -Pac $Pac -Config $Config }
             'env'      { $Config = Invoke-PpvEnvironmentMenu -RepoRoot $RepoRoot -Pac $Pac -Config $Config }
             'status'   { Show-PpvStatus -Config $Config }
+            'diff'     { Invoke-PpvCompareCommits -RepoRoot $RepoRoot }
             'settings' { $Config = Invoke-PpvSettingsMenu -Config $Config }
         }
     }
@@ -440,6 +446,13 @@ function Invoke-PpvCliEnv {
     }
 }
 
+function Invoke-PpvCliDiff {
+    Assert-PpvGitRepo -RepoRoot $RepoRoot
+    if (-not $From) { throw 'Chybi -From <commit/tag/branch>.' }
+    $toRef = if ($To) { $To } else { 'HEAD' }
+    Show-PpvDiffOutput -RepoRoot $RepoRoot -From $From -To $toRef -Path $Path -Full
+}
+
 # ------------------------------------------------------------------- main ---
 
 $existingConfig = Read-PpvConfig -RepoRoot $RepoRoot
@@ -475,5 +488,6 @@ switch ($Command) {
     }
     'sync'   { Invoke-PpvCliSync -Config $existingConfig }
     'env'    { Invoke-PpvCliEnv -Config $existingConfig }
+    'diff'   { Invoke-PpvCliDiff }
     'status' { Show-PpvStatus -Config $existingConfig }
 }

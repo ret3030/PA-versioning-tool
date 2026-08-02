@@ -42,6 +42,7 @@ Při prvním spuštění tě provede **setup průvodce**: založí git repo (pok
 - **Synchronizovat solution** — vybereš prostředí → zdroj (zip ze složky `drop\`, nebo rovnou export z prostředí, s multi-selectem solutions) → volitelně commit/tag/push.
 - **Správa prostředí** — přidat/upravit/odebrat prostředí, přepnout aktivní, ověřit nebo obnovit `pac auth` přihlášení.
 - **Stav repozitáře** — branch, necommitnuté změny, posledních 8 commitů.
+- **Porovnat commity** — vybereš dva commity z historie (starší → novější, nebo HEAD) a zobrazí se souhrn změn, volitelně i plný diff (do konzole nebo uložit jako `.patch`).
 - **Nastavení** — auto-commit/tag/push, formátování JSON, režim rozbalení canvas appů.
 
 Ovládání: šipky nahoru/dolů, `Enter` potvrdit, `Esc` zpět, u víceného výběru navíc mezerník (přepnout) a `a` (vše/nic). Když terminál neumí číst klávesy (např. spouštíš přes nějaký wrapper), CLI samo přepne na číslovaný seznam a zadání čísla přes `Enter`.
@@ -56,6 +57,8 @@ ppv.cmd sync -Environment prod -Mode Export -Solution MojeSolution -Tag -Push
 ppv.cmd sync -Environment dev -Zip C:\Temp\MojeSolution.zip -NoCommit
 ppv.cmd env list
 ppv.cmd status
+ppv.cmd diff -From v1.2.0 -To HEAD
+ppv.cmd diff -From abc1234 -To def5678 -Path src/dev/MojeSolution
 ```
 
 | Parametr `sync` | Význam |
@@ -69,6 +72,14 @@ ppv.cmd status
 | `-Push` | po commitu pushne |
 | `-Message "..."` | vlastní commit message |
 
+| Parametr `diff` | Význam |
+|---|---|
+| `-From <ref>` | povinné — commit hash, tag nebo branch |
+| `-To <ref>` | výchozí `HEAD` |
+| `-Path <relativni-cesta>` | omezí diff na podslozku (napr. konkretni solution/prostredi) |
+
+`diff` v davkovem rezimu vzdy vypise cely diff rovnou do konzole (bez interaktivnich dotazu), takze se da presmerovat do souboru (`ppv.cmd diff -From v1 -To v2 > zmeny.patch`).
+
 ## Struktura repa
 
 ```
@@ -80,12 +91,27 @@ ppv.cmd status
 │     └─ CanvasApps/src/             rozbalené canvas appy (.fx.yaml)
 ├─ tools/
 │  ├─ ppv.ps1                     hlavní CLI
-│  └─ lib/                        PPV.Config / UI / Pac / Common / Sync / Setup
+│  └─ lib/                        PPV.Config / UI / Pac / Common / Sync / Setup / Compare
 ├─ ppv.config.json                vytvoří setup průvodce při prvním spuštění
 └─ ppv.cmd                        dvojklikatelný launcher
 ```
 
 Struktura `src\<prostredi>\<Solution>` (výchozí, `sourceLayout: byEnvironment`) umožňuje mít dev/test/prod vedle sebe a **diffovat je mezi sebou** (`git diff src/dev/MojeSolution src/prod/MojeSolution`). Pro jedno prostředí lze v Nastavení přepnout na `bySolution` (`src\<Solution>` bez mezistupně).
+
+## Instalace do vlastního solution repa (`install.ps1`)
+
+Tenhle repozitář (`PA-versioning-tool`) obsahuje **kód nástroje**. Solution ale verzuj v **samostatném** repu — typicky lokálním, nebo na tvém interním git serveru — nikdy ne v tomhle. `install.ps1` zkopíruje `tools\`, `ppv.cmd`, `.gitignore` a `.gitattributes` do cílové složky a založí tam `git init` (bez remote), pokud tam ještě žádný repo není:
+
+```powershell
+git clone https://github.com/ret3030/PA-versioning-tool.git C:\Nastroje\PA-versioning-tool
+cd C:\Nastroje\PA-versioning-tool
+.\install.ps1 -Target C:\Users\<jmeno>\PowerApps-Solutions
+
+cd C:\Users\<jmeno>\PowerApps-Solutions
+.\ppv.cmd
+```
+
+`ppv.config.json`, `src\` a `drop\` v cílové složce se nikdy nepřepisují — `install.ps1` je proto bezpečné spouštět opakovaně i jen pro aktualizaci nástroje (po `git pull` v klonu `PA-versioning-tool` znovu spusť `install.ps1` se stejným `-Target`).
 
 ## Prostředí a přihlášení
 
