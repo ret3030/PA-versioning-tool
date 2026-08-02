@@ -56,9 +56,10 @@ $ErrorActionPreference = 'Stop'
 trap {
     Write-Host ''
     Write-Host "  !! $($_.Exception.Message)" -ForegroundColor Red
-    if ($_.InvocationInfo -and $_.InvocationInfo.ScriptName) {
-        Write-Host "     $(Split-Path -Leaf $_.InvocationInfo.ScriptName):$($_.InvocationInfo.ScriptLineNumber)  $($_.InvocationInfo.Line.Trim())" -ForegroundColor DarkGray
+    if ($_.InvocationInfo -and $_.InvocationInfo.PositionMessage) {
+        Write-Host ($_.InvocationInfo.PositionMessage.Trim()) -ForegroundColor DarkGray
     }
+    Write-Host "     ErrorId: $($_.FullyQualifiedErrorId)  Type: $($_.Exception.GetType().FullName)" -ForegroundColor DarkGray
     exit 1
 }
 
