@@ -13,6 +13,8 @@
         ppv.ps1 env list
         ppv.ps1 setup
         ppv.ps1 diff -From v1.2.0 -To HEAD
+        ppv.ps1 remote add -Url https://dev.azure.com/tvoje-org/tvuj-projekt/_git/repo
+        ppv.ps1 remote list
 
 .EXAMPLE
     .\tools\ppv.ps1
@@ -25,7 +27,7 @@
 [CmdletBinding()]
 param(
     [Parameter(Position = 0)]
-    [ValidateSet('setup', 'sync', 'env', 'status', 'diff', '')]
+    [ValidateSet('setup', 'sync', 'env', 'status', 'diff', 'remote', '')]
     [string]$Command = '',
 
     [Parameter(Position = 1)]
@@ -42,7 +44,9 @@ param(
     [string]$Message,
     [string]$From,
     [string]$To,
-    [string]$Path
+    [string]$Path,
+    [string]$RemoteName = 'origin',
+    [string]$Url
 )
 
 Set-StrictMode -Version Latest
@@ -351,6 +355,84 @@ function Invoke-PpvSettingsMenu {
     }
 }
 
+# ------------------------------------------------------------- git remote --
+
+function Invoke-PpvRemoteMenu {
+    <#
+        Sprava git remote. Defaultne repo nema zadny remote (ciste lokalni
+        rezim - viz Zscaler/firemni pozadavky v README) - tohle je misto,
+        kde si remote pripadne pridas, az/pokud bude kam pushovat.
+    #>
+    param([Parameter(Mandatory)]$Config)
+
+    while ($true) {
+        Write-PpvBanner 'Vzdalene ulozite (git remote)'
+        $remotes = @(Get-PpvGitRemotes -RepoRoot $RepoRoot)
+        if ($remotes.Count -eq 0) {
+            Write-PpvHint 'Zadny remote neni nastaveny - repo bezi ciste lokalne, nic se nepushuje.'
+        } else {
+            foreach ($r in $remotes) { Write-PpvField -Label $r.Name -Value $r.Url }
+        }
+        Write-Host ''
+
+        $items = New-Object System.Collections.Generic.List[pscustomobject]
+        $items.Add([pscustomobject]@{ Key = 'add'; Label = 'Pridat remote' })
+        if ($remotes.Count -gt 0) {
+            $items.Add([pscustomobject]@{ Key = 'edit';   Label = 'Zmenit URL existujiciho remote' })
+            $items.Add([pscustomobject]@{ Key = 'remove'; Label = 'Odebrat remote' })
+        }
+        $items.Add([pscustomobject]@{ Key = 'back'; Label = 'Zpet' })
+
+        $choice = Show-PpvMenu -Items @($items)
+        if (-not $choice -or $choice -eq 'back') { return $Config }
+
+        switch ($choice) {
+            'add' {
+                $name = Read-PpvText -Prompt 'Nazev remote' -Default 'origin' -Required
+                $url  = Read-PpvText -Prompt 'URL repozitare (napr. interni Azure DevOps / GitLab / GitHub Enterprise)' -Required
+                if (Add-PpvGitRemote -RepoRoot $RepoRoot -Name $name -Url $url) {
+                    Write-PpvOk "Remote '$name' pridan."
+                    if (-not [bool]$Config.git.push -and (Read-PpvConfirm -Prompt 'Zapnout i auto-push po commitu?' -Default $false)) {
+                        $Config.git.push = $true
+                        Save-PpvConfig -RepoRoot $RepoRoot -Config $Config
+                        Write-PpvOk 'Auto-push zapnut (jde zmenit i pozdeji v Nastaveni).'
+                    }
+                } else {
+                    Write-PpvErr "Nepodarilo se pridat remote - jmeno '$name' uz mozna existuje."
+                }
+                Wait-PpvKey
+            }
+            'edit' {
+                $names = @($remotes | ForEach-Object { [pscustomobject]@{ Key = $_.Name; Label = "$($_.Name)  ($($_.Url))" } })
+                $pick = Show-PpvMenu -Items $names -Title 'Ktery remote upravit?'
+                if ($pick) {
+                    $url = Read-PpvText -Prompt 'Nova URL' -Required
+                    if (Set-PpvGitRemoteUrl -RepoRoot $RepoRoot -Name $pick -Url $url) { Write-PpvOk 'URL zmenena.' }
+                    else { Write-PpvErr 'Zmena URL selhala.' }
+                }
+                Wait-PpvKey
+            }
+            'remove' {
+                $names = @($remotes | ForEach-Object { [pscustomobject]@{ Key = $_.Name; Label = "$($_.Name)  ($($_.Url))" } })
+                $pick = Show-PpvMenu -Items $names -Title 'Ktery remote odebrat?'
+                if ($pick -and (Read-PpvConfirm -Prompt "Opravdu odebrat remote '$pick'? (repo pak zase pojede ciste lokalne)" -Default $false)) {
+                    if (Remove-PpvGitRemote -RepoRoot $RepoRoot -Name $pick) {
+                        Write-PpvOk 'Remote odebran.'
+                        if ([bool]$Config.git.push) {
+                            $Config.git.push = $false
+                            Save-PpvConfig -RepoRoot $RepoRoot -Config $Config
+                            Write-PpvHint 'Auto-push automaticky vypnut - uz neni kam pushovat.'
+                        }
+                    } else {
+                        Write-PpvErr 'Odebrani selhalo.'
+                    }
+                }
+                Wait-PpvKey
+            }
+        }
+    }
+}
+
 # --------------------------------------------------------- hlavni smycka ----
 
 function Invoke-PpvMainMenu {
@@ -370,6 +452,7 @@ function Invoke-PpvMainMenu {
             [pscustomobject]@{ Key = 'env';    Label = 'Sprava prostredi' }
             [pscustomobject]@{ Key = 'status'; Label = 'Stav repozitare' }
             [pscustomobject]@{ Key = 'diff';   Label = 'Porovnat commity' }
+            [pscustomobject]@{ Key = 'remote'; Label = 'Vzdalene ulozite (remote)' }
             [pscustomobject]@{ Key = 'settings'; Label = 'Nastaveni' }
             [pscustomobject]@{ Key = 'exit';   Label = 'Konec' }
         )
@@ -381,6 +464,7 @@ function Invoke-PpvMainMenu {
             'env'      { $Config = Invoke-PpvEnvironmentMenu -RepoRoot $RepoRoot -Pac $Pac -Config $Config }
             'status'   { Show-PpvStatus -Config $Config }
             'diff'     { Invoke-PpvCompareCommits -RepoRoot $RepoRoot }
+            'remote'   { $Config = Invoke-PpvRemoteMenu -Config $Config }
             'settings' { $Config = Invoke-PpvSettingsMenu -Config $Config }
         }
     }
@@ -459,6 +543,34 @@ function Invoke-PpvCliDiff {
     Show-PpvDiffOutput -RepoRoot $RepoRoot -From $From -To $toRef -Path $Path -Full
 }
 
+function Invoke-PpvCliRemote {
+    Assert-PpvGitRepo -RepoRoot $RepoRoot
+
+    switch ($SubCommand) {
+        'add' {
+            if (-not $Url) { throw 'Chybi -Url <adresa repozitare>.' }
+            if (-not (Add-PpvGitRemote -RepoRoot $RepoRoot -Name $RemoteName -Url $Url)) {
+                throw "Nepodarilo se pridat remote '$RemoteName' - mozna uz existuje."
+            }
+            Write-PpvOk "Remote '$RemoteName' pridan: $Url"
+        }
+        'remove' {
+            if (-not (Remove-PpvGitRemote -RepoRoot $RepoRoot -Name $RemoteName)) {
+                throw "Nepodarilo se odebrat remote '$RemoteName'."
+            }
+            Write-PpvOk "Remote '$RemoteName' odebran."
+        }
+        default {
+            $remotes = @(Get-PpvGitRemotes -RepoRoot $RepoRoot)
+            if ($remotes.Count -eq 0) {
+                Write-PpvHint 'Zadny remote neni nastaveny - repo bezi ciste lokalne.'
+            } else {
+                foreach ($r in $remotes) { Write-PpvField -Label $r.Name -Value $r.Url }
+            }
+        }
+    }
+}
+
 # ------------------------------------------------------------------- main ---
 
 $existingConfig = Read-PpvConfig -RepoRoot $RepoRoot
@@ -495,5 +607,6 @@ switch ($Command) {
     'sync'   { Invoke-PpvCliSync -Config $existingConfig }
     'env'    { Invoke-PpvCliEnv -Config $existingConfig }
     'diff'   { Invoke-PpvCliDiff }
+    'remote' { Invoke-PpvCliRemote }
     'status' { Show-PpvStatus -Config $existingConfig }
 }

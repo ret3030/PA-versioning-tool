@@ -43,6 +43,7 @@ Při prvním spuštění tě provede **setup průvodce**: založí git repo (pok
 - **Správa prostředí** — přidat/upravit/odebrat prostředí, přepnout aktivní, ověřit nebo obnovit `pac auth` přihlášení.
 - **Stav repozitáře** — branch, necommitnuté změny, posledních 8 commitů.
 - **Porovnat commity** — vybereš dva commity z historie (starší → novější, nebo HEAD) a zobrazí se souhrn změn, volitelně i plný diff (do konzole nebo uložit jako `.patch`).
+- **Vzdálené úložiště (remote)** — repo defaultně nemá žádný remote (čistě lokální režim, viz Zscaler sekce níže). Tady si ho případně přidáš/upravíš/odebereš, až/pokud budeš mít kam pushovat.
 - **Nastavení** — auto-commit/tag/push, formátování JSON, režim rozbalení canvas appů.
 
 Ovládání: šipky nahoru/dolů, `Enter` potvrdit, `Esc` zpět, u víceného výběru navíc mezerník (přepnout) a `a` (vše/nic). Když terminál neumí číst klávesy (např. spouštíš přes nějaký wrapper), CLI samo přepne na číslovaný seznam a zadání čísla přes `Enter`.
@@ -59,6 +60,9 @@ ppv.cmd env list
 ppv.cmd status
 ppv.cmd diff -From v1.2.0 -To HEAD
 ppv.cmd diff -From abc1234 -To def5678 -Path src/dev/MojeSolution
+ppv.cmd remote list
+ppv.cmd remote add -Url https://dev.azure.com/tvoje-org/tvuj-projekt/_git/repo
+ppv.cmd remote remove
 ```
 
 | Parametr `sync` | Význam |
@@ -79,6 +83,14 @@ ppv.cmd diff -From abc1234 -To def5678 -Path src/dev/MojeSolution
 | `-Path <relativni-cesta>` | omezí diff na podslozku (napr. konkretni solution/prostredi) |
 
 `diff` v davkovem rezimu vzdy vypise cely diff rovnou do konzole (bez interaktivnich dotazu), takze se da presmerovat do souboru (`ppv.cmd diff -From v1 -To v2 > zmeny.patch`).
+
+| Parametr `remote` | Význam |
+|---|---|
+| `remote` (bez `SubCommand`) nebo `remote list` | vypíše nastavené remotes |
+| `remote add -Url <adresa>` | přidá remote (výchozí jméno `origin`, lze přepsat `-RemoteName`) |
+| `remote remove` | odebere remote (výchozí jméno `origin`, lze přepsat `-RemoteName`) |
+
+Bez remote (výchozí stav) `git push`/`-Push`/`Auto-push` prostě nemají kam pushovat — repo funguje čistě lokálně.
 
 ## Struktura repa
 

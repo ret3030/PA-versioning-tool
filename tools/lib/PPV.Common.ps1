@@ -171,6 +171,68 @@ function Test-GitRepo {
     } finally { Pop-Location }
 }
 
+function Get-PpvGitRemotes {
+    <#
+        Vraci pole @{ Name; Url } - bez remote (defaultni, ciste lokalni
+        rezim) vraci prazdne pole.
+    #>
+    param([Parameter(Mandatory)][string]$RepoRoot)
+    Push-Location $RepoRoot
+    try {
+        $lines = @(& git remote -v 2>$null)
+        $seen = @{}
+        $result = New-Object System.Collections.Generic.List[pscustomobject]
+        foreach ($line in $lines) {
+            if ($line -match '^(\S+)\s+(\S+)\s+\(fetch\)$') {
+                $name = $matches[1]; $url = $matches[2]
+                if (-not $seen.ContainsKey($name)) {
+                    $seen[$name] = $true
+                    $result.Add([pscustomobject]@{ Name = $name; Url = $url })
+                }
+            }
+        }
+        return @($result)
+    } finally { Pop-Location }
+}
+
+function Add-PpvGitRemote {
+    param(
+        [Parameter(Mandatory)][string]$RepoRoot,
+        [Parameter(Mandatory)][string]$Name,
+        [Parameter(Mandatory)][string]$Url
+    )
+    Push-Location $RepoRoot
+    try {
+        & git remote add $Name $Url 2>&1 | Out-Null
+        return ($LASTEXITCODE -eq 0)
+    } finally { Pop-Location }
+}
+
+function Set-PpvGitRemoteUrl {
+    param(
+        [Parameter(Mandatory)][string]$RepoRoot,
+        [Parameter(Mandatory)][string]$Name,
+        [Parameter(Mandatory)][string]$Url
+    )
+    Push-Location $RepoRoot
+    try {
+        & git remote set-url $Name $Url 2>&1 | Out-Null
+        return ($LASTEXITCODE -eq 0)
+    } finally { Pop-Location }
+}
+
+function Remove-PpvGitRemote {
+    param(
+        [Parameter(Mandatory)][string]$RepoRoot,
+        [Parameter(Mandatory)][string]$Name
+    )
+    Push-Location $RepoRoot
+    try {
+        & git remote remove $Name 2>&1 | Out-Null
+        return ($LASTEXITCODE -eq 0)
+    } finally { Pop-Location }
+}
+
 function Invoke-GitCommit {
     <#
         Zaradi zmeny v dane slozce a commitne.
