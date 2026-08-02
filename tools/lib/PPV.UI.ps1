@@ -1,4 +1,4 @@
-# PPV.UI.ps1 - terminalove UI: menu se sipkami, prompty, multiselect
+﻿# PPV.UI.ps1 - terminalove UI: menu se sipkami, prompty, multiselect
 Set-StrictMode -Version Latest
 
 # ------------------------------------------------------------- vzhled -------

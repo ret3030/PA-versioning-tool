@@ -1,4 +1,4 @@
-# PPV.Sync.ps1 - orchestrace: export -> unpack -> canvas -> normalizace -> commit
+﻿# PPV.Sync.ps1 - orchestrace: export -> unpack -> canvas -> normalizace -> commit
 Set-StrictMode -Version Latest
 
 function Export-PpvSolutionZip {

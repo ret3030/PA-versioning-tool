@@ -1,4 +1,4 @@
-# PPV.Setup.ps1 - setup pruvodce a sprava prostredi
+﻿# PPV.Setup.ps1 - setup pruvodce a sprava prostredi
 Set-StrictMode -Version Latest
 
 function Invoke-PpvEnvironmentForm {
