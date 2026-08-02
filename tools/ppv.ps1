@@ -300,10 +300,25 @@ function Show-PpvStatus {
         Write-PpvField -Label 'Necommitnute zmeny' -Value ($(if ($dirty.Count -gt 0) { "$($dirty.Count) souboru" } else { 'zadne' })) `
                        -Color ($(if ($dirty.Count -gt 0) { 'Yellow' } else { 'Green' }))
 
+        if ($dirty.Count -gt 0) {
+            Write-Host ''
+            Write-Host '  Necommitnute soubory:' -ForegroundColor DarkGray
+            foreach ($line in $dirty) { Write-Host "    $line" -ForegroundColor Yellow }
+        }
+
         Write-Host ''
         Write-Host '  Posledni commity:' -ForegroundColor DarkGray
         & git log --oneline -n 8 2>$null | ForEach-Object { Write-Host "    $_" -ForegroundColor Gray }
     } finally { Pop-Location }
+
+    if ($dirty.Count -gt 0 -and (Test-PpvInteractive) -and (Read-PpvConfirm -Prompt 'Zobrazit plny diff necommitnutych zmen?' -Default $false)) {
+        Push-Location $RepoRoot
+        try {
+            Write-Host ''
+            & git --no-pager diff HEAD 2>&1 | ForEach-Object { Write-Host $_ }
+            Write-PpvHint 'Netracked soubory (??) diff neukazuje - jen commitnute/staged obsah.'
+        } finally { Pop-Location }
+    }
 
     Wait-PpvKey
 }

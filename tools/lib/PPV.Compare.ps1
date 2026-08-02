@@ -46,7 +46,10 @@ function Show-PpvDiffOutput {
         if ($LASTEXITCODE -ne 0) { throw "'$To' neni platny commit/tag/branch v tomhle repu." }
 
         Write-PpvTitle "Souhrn zmen: $From -> $To"
-        $stat = @(& git --no-pager diff --stat $From $To @pathArgs 2>&1)
+        # 2>&1 u externiho prikazu mixuje do pole ErrorRecord objekty (ne
+        # ciste retezce) - .ToString() vsechno srovna na string, jinak pozdejsi
+        # .NET volani (WriteAllLines) padaji na "Cannot convert System.Object[]".
+        $stat = @(& git --no-pager diff --stat $From $To @pathArgs 2>&1 | ForEach-Object { $_.ToString() })
         if ($LASTEXITCODE -ne 0) { throw "git diff selhal: $($stat -join "`n")" }
 
         if ($stat.Count -eq 0) {
@@ -63,7 +66,7 @@ function Show-PpvDiffOutput {
         }
         if (-not $showFull) { return }
 
-        $full = @(& git --no-pager diff $From $To @pathArgs 2>&1)
+        $full = @(& git --no-pager diff $From $To @pathArgs 2>&1 | ForEach-Object { $_.ToString() })
 
         $saveToFile = $false
         if (Test-PpvInteractive) {

@@ -41,7 +41,7 @@ Při prvním spuštění tě provede **setup průvodce**: založí git repo (pok
 
 - **Synchronizovat solution** — vybereš prostředí → zdroj (zip ze složky `drop\`, nebo rovnou export z prostředí, s multi-selectem solutions) → volitelně commit/tag/push.
 - **Správa prostředí** — přidat/upravit/odebrat prostředí, přepnout aktivní, ověřit nebo obnovit `pac auth` přihlášení.
-- **Stav repozitáře** — branch, necommitnuté změny, posledních 8 commitů.
+- **Stav repozitáře** — branch, necommitnuté změny (seznam souborů, ne jen počet), posledních 8 commitů. Volitelně i plný diff necommitnutých změn.
 - **Porovnat commity** — vybereš dva commity z historie (starší → novější, nebo HEAD) a zobrazí se souhrn změn, volitelně i plný diff (do konzole nebo uložit jako `.patch`).
 - **Vzdálené úložiště (remote)** — repo defaultně nemá žádný remote (čistě lokální režim, viz Zscaler sekce níže). Tady si ho případně přidáš/upravíš/odebereš, až/pokud budeš mít kam pushovat. **GitHub (github.com) je defaultně zamčený** — přidání/změna remote na github.com URL se zeptá na výslovné odemčení (uloží se do configu, dá se zase zamknout v Nastavení).
 - **Nastavení** — auto-commit/tag/push, formátování JSON, režim rozbalení canvas appů.
