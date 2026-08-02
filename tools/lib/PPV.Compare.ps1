@@ -66,7 +66,7 @@ function Show-PpvDiffOutput {
         }
         if (-not $showFull) { return }
 
-        $full = @(& git --no-pager diff $From $To @pathArgs 2>&1 | ForEach-Object { $_.ToString() })
+        $fullDiff = @(& git --no-pager diff $From $To @pathArgs 2>&1 | ForEach-Object { $_.ToString() })
 
         $saveToFile = $false
         if (Test-PpvInteractive) {
@@ -77,14 +77,14 @@ function Show-PpvDiffOutput {
             $shortFrom = $From.Substring(0, [Math]::Min(8, $From.Length))
             $shortTo   = $To.Substring(0, [Math]::Min(8, $To.Length))
             $tmp = Join-Path ([System.IO.Path]::GetTempPath()) "ppv-diff-$shortFrom-$shortTo.patch"
-            [System.IO.File]::WriteAllLines($tmp, $full)
+            [System.IO.File]::WriteAllLines($tmp, $fullDiff)
             Write-PpvOk "Ulozeno: $tmp"
             if ((Test-PpvInteractive) -and (Read-PpvConfirm -Prompt 'Otevrit v defaultnim programu?' -Default $true)) {
                 Start-Process $tmp
             }
         } else {
             Write-Host ''
-            $full | ForEach-Object { Write-Host $_ }
+            $fullDiff | ForEach-Object { Write-Host $_ }
         }
     } finally { Pop-Location }
 }
